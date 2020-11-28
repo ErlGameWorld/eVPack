@@ -1,17 +1,21 @@
 -module(eVPack).
 -include("eVPack.hrl").
 
+-compile(inline).
+-compile({inline_size, 128}).
+-import(lists, [reverse/1]).
+-import(maps, [iterator/1, next/1, keys/1]).
+
 -export([
    encode/1
    , encode/3
    , decode/1
    , encodeAtom/1
-   , encodeFloat/1
-   , encodeInteger/1
-   , encodeList/3
    , encodeMap/3
+   , encodeList/3
+   , encodeFloat/1
    , encodeString/1
-   , encoder/3
+   , encodeInteger/1
    , buildIndexTable_1/2
    , buildIndexTable_2/2
    , buildIndexTable_4/2
@@ -19,17 +23,30 @@
 ]).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  编码   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% encode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec encode(term()) -> {ok, vpack()} | {error, any()}.
-encode(Term) -> encode(Term, ?VpDefArrOpt, ?VpDefObjOpt).
+encode(Term) ->
+   %%{VPack, _Size} = encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt),
+   %%VPack.
+   try encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt) of
+      {VPack, _Size} ->
+         VPack
+   catch
+      C:E:S ->
+         {C, E, S}
+   end.
 
 -spec encode(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
 encode(Term, ArrOpt, ObjOpt) ->
-   try {_v@1, __size@1} = encoder(Term, ArrOpt, ObjOpt),
-   {ok, _v@1}
+   % {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
+   % VPack.
+   try encoder(Term, ArrOpt, ObjOpt) of
+      {VPack, _Size} ->
+         VPack
    catch
-      throw:Class -> {error, Class}
+      C:E:S ->
+         {C, E, S}
    end.
 
 encoder(Map, ArrOpt, ObjOpt) when erlang:is_map(Map) ->
@@ -347,7 +364,7 @@ compactSize(AllSize) ->
 
 encodeCompactData(Type, IoData, SumSize, Count) ->
    CompactList = compactInteger(Count, true),
-   AllSize = SumSize + 1 + lists:length(CompactList),
+   AllSize = SumSize + 1 + erlang:length(CompactList),
    {TotalSize, FinalSize} = compactSize(AllSize),
    {[Type, TotalSize, IoData | CompactList], FinalSize}.
 
@@ -463,14 +480,16 @@ encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  decode  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+-spec decode(vpack()) -> term().
 decode(DataBin) ->
+   % {Term, _} = decoder(DataBin),
+   % Term.
    try decoder(DataBin) of
-      {Value, <<>>} -> {ok, Value};
-      {Value, Tail} -> {ok, {Value, Tail}}
+      {Term, _} ->
+         Term
    catch
-      Class:Err:Strace ->
-         {error, Class, Err, Strace}
+      C:E:S ->
+         {C, E, S}
    end.
 
 decoder(DataBin) ->
