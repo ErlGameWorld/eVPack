@@ -8,7 +8,9 @@
 
 -export([
    encode/1
+   , encodeBin/1
    , encode/3
+   , encodeBin/3
    , decode/1
    , encodeAtom/1
    , encodeMap/3
@@ -29,9 +31,21 @@
 encode(Term) ->
    %%{VPack, _Size} = encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt),
    %%VPack.
-   try encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt) of
+   try encoder(Term, ?VpArrDef, ?VpObjDef) of
       {VPack, _Size} ->
          VPack
+   catch
+      C:E:S ->
+         {C, E, S}
+   end.
+
+-spec encodeBin(term()) -> {ok, vpack()} | {error, any()}.
+encodeBin(Term) ->
+   %%{VPack, _Size} = encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt),
+   %%iolist_to_binary(VPack).
+   try encoder(Term, ?VpArrDef, ?VpObjDef) of
+      {VPack, _Size} ->
+         iolist_to_binary(VPack)
    catch
       C:E:S ->
          {C, E, S}
@@ -44,6 +58,18 @@ encode(Term, ArrOpt, ObjOpt) ->
    try encoder(Term, ArrOpt, ObjOpt) of
       {VPack, _Size} ->
          VPack
+   catch
+      C:E:S ->
+         {C, E, S}
+   end.
+
+-spec encodeBin(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
+encodeBin(Term, ArrOpt, ObjOpt) ->
+   % {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
+   % iolist_to_binary(VPack).
+   try encoder(Term, ArrOpt, ObjOpt) of
+      {VPack, _Size} ->
+         iolist_to_binary(VPack)
    catch
       C:E:S ->
          {C, E, S}
@@ -86,6 +112,7 @@ encodeAtom(minKey) -> {<<30/integer>>, 1};
 encodeAtom(maxKey) -> {<<31/integer>>, 1};
 encodeAtom(illegal) -> {<<23/integer>>, 1};
 encodeAtom(null) -> {<<24/integer>>, 1};
+encodeAtom(nil) -> {<<24/integer>>, 1};
 encodeAtom(Atom) ->
    encodeString(erlang:atom_to_binary(Atom, utf8)).
 
@@ -229,13 +256,13 @@ doEncodeMap([OneKeys | Left], Map, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
          end
    end.
 
-encodeMap(?vpObjNcNs, Map, ArrOpt) ->
+encodeMap(?VpObjNcNs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
          {<<10/integer>>, 1};
       _ ->
-         {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?vpObjNcNs, [], [], 0),
+         {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjNcNs, [], [], 0),
          IoData = lists:reverse(AccList),
          case MapSize >= 1000 of
             false ->
@@ -244,13 +271,13 @@ encodeMap(?vpObjNcNs, Map, ArrOpt) ->
                encodeUnSortMapIndexTable(erlang:iolist_to_binary(IoData), MapSize, Offsets, SumSize)
          end
    end;
-encodeMap(?vpObjYc, Map, ArrOpt) ->
+encodeMap(?VpObjYc, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
          {<<10/integer>>, 1};
       _ ->
-         {AccList, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?vpObjYc, [], 0),
+         {AccList, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjYc, [], 0),
          IoData = lists:reverse(AccList),
          case MapSize >= 1000 of
             false ->
@@ -259,7 +286,7 @@ encodeMap(?vpObjYc, Map, ArrOpt) ->
                encodeCompactData(<<20/integer>>, erlang:iolist_to_binary(IoData), SumSize, MapSize)
          end
    end;
-encodeMap(?vpObjNcYs, Map, ArrOpt) ->
+encodeMap(?VpObjNcYs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
@@ -267,7 +294,7 @@ encodeMap(?vpObjNcYs, Map, ArrOpt) ->
       _ ->
          Keys = maps:keys(Map),
          StrKeys = [asKey(OneKey) || OneKey <- Keys],
-         {AccList, Offsets, SumSize} = doEncodeMap(lists:sort(StrKeys), Map, ArrOpt, ?vpObjNcYs, [], [], 0),
+         {AccList, Offsets, SumSize} = doEncodeMap(lists:sort(StrKeys), Map, ArrOpt, ?VpObjNcYs, [], [], 0),
          IoData = lists:reverse(AccList),
          case MapSize >= 1000 of
             false ->
@@ -392,37 +419,37 @@ doEncodeList([One | Left], ArrOpt, ObjOpt, AccList, Offsets, SumSize, Count, Siz
          doEncodeList(Left, ArrOpt, ObjOpt, [ValueEn | AccList], [SumSize | Offsets], ValueSize + SumSize, Count + 1, ValueSize =/= SizeOrIsNot orelse SizeOrIsNot)
    end.
 
-encodeList(?vpArrNc, List, ObjOpt) ->
+encodeList(?VpArrNc, List, ObjOpt) ->
    case List of
       [] ->
          {<<1/integer>>, 1};
       _ ->
-         {AccList, Offsets, SumSize, Count, IsNotSameSize} = doEncodeList(List, ?vpArrNc, ObjOpt, [], [], 0, 0, init),
+         {AccList, Offsets, SumSize, Count, IsNotSameSize} = doEncodeList(List, ?VpArrNc, ObjOpt, [], [], 0, 0, init),
 
          IoData = lists:reverse(AccList),
          case Count >= 1000 of
             false ->
                case IsNotSameSize of
                   true ->
-                     encodeListWithoutIndexTable(IoData, SumSize);
+                     encodeListWithIndexTable(IoData, Count, Offsets, SumSize);
                   _ ->
-                     encodeListWithIndexTable(IoData, Count, Offsets, SumSize)
+                     encodeListWithoutIndexTable(IoData, SumSize)
                end;
             _ ->
                case IsNotSameSize of
                   true ->
-                     encodeListWithoutIndexTable(erlang:iolist_to_binary(IoData), SumSize);
+                     encodeListWithIndexTable(erlang:iolist_to_binary(IoData), Count, Offsets, SumSize);
                   _ ->
-                     encodeListWithIndexTable(erlang:iolist_to_binary(IoData), Count, Offsets, SumSize)
+                     encodeListWithoutIndexTable(erlang:iolist_to_binary(IoData), SumSize)
                end
          end
    end;
-encodeList(?vpArrYc, List, ObjOpt) ->
+encodeList(?VpArrYc, List, ObjOpt) ->
    case List of
       [] ->
          {<<1/integer>>, 1};
       _ ->
-         {AccList, SumSize, Count} = doEncodeList(List, ?vpArrYc, ObjOpt, [], 0, 0),
+         {AccList, SumSize, Count} = doEncodeList(List, ?VpArrYc, ObjOpt, [], 0, 0),
 
          IoData = lists:reverse(AccList),
          case Count >= 1000 of

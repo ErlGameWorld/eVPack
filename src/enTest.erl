@@ -1,4 +1,4 @@
--module(encoderTest).
+-module(enTest).
 -include("eVPack.hrl").
 
 -compile([no_auto_import]).
@@ -10,57 +10,57 @@
 test() ->
    try do() of
       _ ->
-         ok
+         'all test is pass'
    catch
       E:C:S ->
          {E, C, S}
    end.
 
 do() ->
-   <<23>> = eVPack:encode(illegal),
-   <<24>> = eVPack:encode(nil),
-   <<25>> = eVPack:encode(false),
-   <<26>> = eVPack:encode(true),
-   <<27, 102, 102, 102, 102, 102, 182, 96, 64>> = eVPack:encode(1.33699999999999988631e+2),
-   <<27, 102, 102, 102, 102, 102, 182, 96, 192>> = eVPack:encode(-1.33699999999999988631e+2),
-   <<30>> = eVPack:encode(min_key),
-   <<31>> = eVPack:encode(max_key),
-   <<48>> = eVPack:encode(0),
-   <<49>> = eVPack:encode(1),
-   <<50>> = eVPack:encode(2),
-   <<51>> = eVPack:encode(3),
-   <<52>> = eVPack:encode(4),
-   <<53>> = eVPack:encode(5),
-   <<54>> = eVPack:encode(6),
-   <<55>> = eVPack:encode(7),
-   <<56>> = eVPack:encode(8),
-   <<57>> = eVPack:encode(9),
-   <<58>> = eVPack:encode(-6),
-   <<59>> = eVPack:encode(-5),
-   <<60>> = eVPack:encode(-4),
-   <<61>> = eVPack:encode(-3),
-   <<62>> = eVPack:encode(-2),
-   <<63>> = eVPack:encode(-1),
-   <<32, (-7)/integer-little-signed>> = eVPack:encode(-7),
-   <<32, 128>> = eVPack:encode(-128),
-   <<33, 0, 128>> = eVPack:encode(-32768),
-   <<34, 0, 0, 128>> = eVPack:encode(-8388608),
-   <<35, 0, 0, 0, 128>> = eVPack:encode(-2147483648),
-   <<36, 0, 0, 0, 0, 128>> = eVPack:encode(-549755813888),
-   <<37, 0, 0, 0, 0, 0, 128>> = eVPack:encode(-140737488355328),
-   <<38, 0, 0, 0, 0, 0, 0, 128>> = eVPack:encode(-36028797018963968),
-   <<39, 0, 0, 0, 0, 0, 0, 0, 128>> = eVPack:encode(-9223372036854775808),
-   <<40, 255>> = eVPack:encode(255),
-   <<41, 255, 255>> = eVPack:encode(65535),
-   <<42, 255, 255, 255>> = eVPack:encode(16777215),
-   <<43, 255, 255, 255, 255>> = eVPack:encode(4294967295),
-   <<44, 255, 255, 255, 255, 255>> = eVPack:encode(1099511627775),
-   <<45, 255, 255, 255, 255, 255, 255>> = eVPack:encode(281474976710655),
-   <<46, 255, 255, 255, 255, 255, 255, 255>> = eVPack:encode(72057594037927935),
-   <<47, 255, 255, 255, 255, 255, 255, 255, 255>> = eVPack:encode(18446744073709551615),
-   <<75, 72, 97, 108, 108, 111, 32, 87, 101, 108, 116, 33>> = eVPack:encode(<<"Hallo Welt!">>),
-   <<76, 72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33>> = eVPack:encode(<<"Hello World!">>),
-   Str = <<"Lorem ipsum dolor sit amet, consectetuer "
+   <<23>> = eVPack:encodeBin(illegal),
+   <<24>> = eVPack:encodeBin(nil),
+   <<25>> = eVPack:encodeBin(false),
+   <<26>> = eVPack:encodeBin(true),
+   <<27, 102, 102, 102, 102, 102, 182, 96, 64>> = eVPack:encodeBin(1.33699999999999988631e+2),
+   <<27, 102, 102, 102, 102, 102, 182, 96, 192>> = eVPack:encodeBin(-1.33699999999999988631e+2),
+   <<30>> = eVPack:encodeBin(minKey),
+   <<31>> = eVPack:encodeBin(maxKey),
+   <<48>> = eVPack:encodeBin(0),
+   <<49>> = eVPack:encodeBin(1),
+   <<50>> = eVPack:encodeBin(2),
+   <<51>> = eVPack:encodeBin(3),
+   <<52>> = eVPack:encodeBin(4),
+   <<53>> = eVPack:encodeBin(5),
+   <<54>> = eVPack:encodeBin(6),
+   <<55>> = eVPack:encodeBin(7),
+   <<56>> = eVPack:encodeBin(8),
+   <<57>> = eVPack:encodeBin(9),
+   <<58>> = eVPack:encodeBin(-6),
+   <<59>> = eVPack:encodeBin(-5),
+   <<60>> = eVPack:encodeBin(-4),
+   <<61>> = eVPack:encodeBin(-3),
+   <<62>> = eVPack:encodeBin(-2),
+   <<63>> = eVPack:encodeBin(-1),
+   <<32, (-7)/integer-little-signed>> = eVPack:encodeBin(-7),
+   <<32, 128>> = eVPack:encodeBin(-128),
+   <<33, 0, 128>> = eVPack:encodeBin(-32768),
+   <<34, 0, 0, 128>> = eVPack:encodeBin(-8388608),
+   <<35, 0, 0, 0, 128>> = eVPack:encodeBin(-2147483648),
+   <<36, 0, 0, 0, 0, 128>> = eVPack:encodeBin(-549755813888),
+   <<37, 0, 0, 0, 0, 0, 128>> = eVPack:encodeBin(-140737488355328),
+   <<38, 0, 0, 0, 0, 0, 0, 128>> = eVPack:encodeBin(-36028797018963968),
+   <<39, 0, 0, 0, 0, 0, 0, 0, 128>> = eVPack:encodeBin(-9223372036854775808),
+   <<40, 255>> = eVPack:encodeBin(255),
+   <<41, 255, 255>> = eVPack:encodeBin(65535),
+   <<42, 255, 255, 255>> = eVPack:encodeBin(16777215),
+   <<43, 255, 255, 255, 255>> = eVPack:encodeBin(4294967295),
+   <<44, 255, 255, 255, 255, 255>> = eVPack:encodeBin(1099511627775),
+   <<45, 255, 255, 255, 255, 255, 255>> = eVPack:encodeBin(281474976710655),
+   <<46, 255, 255, 255, 255, 255, 255, 255>> = eVPack:encodeBin(72057594037927935),
+   <<47, 255, 255, 255, 255, 255, 255, 255, 255>> = eVPack:encodeBin(18446744073709551615),
+   <<75, 72, 97, 108, 108, 111, 32, 87, 101, 108, 116, 33>> = eVPack:encodeBin(<<"Hallo Welt!">>),
+   <<76, 72, 101, 108, 108, 111, 32, 87, 111, 114, 108, 100, 33>> = eVPack:encodeBin(<<"Hello World!">>),
+   _Str = <<"Lorem ipsum dolor sit amet, consectetuer "
    "adipiscing elit. Aenean commodo ligula "
    "eget dolor. ",
       "Aenean massa. Cum sociis natoque penatibus "
@@ -77,7 +77,7 @@ do() ->
       "tincidunt. Cras dapibus. ",
       "Vivamus elementum semper nisi. Aenean "
       "vulputate eleifend tellus.">>,
-   StrBin = <<191, 55, 2, 0, 0, 0, 0, 0, 0, 76, 111, 114, 101, 109, 32, 105, 112, 115, 117, 109, 32, 100, 111, 108, 111,
+   _StrBin = <<191, 55, 2, 0, 0, 0, 0, 0, 0, 76, 111, 114, 101, 109, 32, 105, 112, 115, 117, 109, 32, 100, 111, 108, 111,
       114, 32, 115, 105, 116, 32, 97, 109, 101, 116, 44, 32, 99, 111, 110, 115, 101, 99, 116, 101, 116, 117, 101,
       114, 32, 97, 100, 105, 112, 105, 115, 99, 105, 110, 103, 32, 101, 108, 105, 116, 46, 32, 65, 101, 110, 101,
       97, 110, 32, 99, 111, 109, 109, 111, 100, 111, 32, 108, 105, 103, 117, 108, 97, 32, 101, 103, 101,
@@ -106,22 +106,21 @@ do() ->
       109, 112, 101, 114, 32, 110, 105, 115, 105, 46, 32, 65, 101, 110, 101, 97, 110, 32, 118, 117,
       108, 112, 117, 116, 97, 116, 101, 32, 101, 108, 101, 105, 102, 101, 110, 100, 32, 116, 101, 108,
       108, 117, 115, 46>>,
-   StrBin = eVPack:encode(Str),
+   %%StrBin = eVPack:encodeBin(Str),
 
-   <<1>> = eVPack:encode([]),
-   <<2, 5, "1", "2", "3">> = eVPack:encode([1, 2, 3]),
+   <<1>> = eVPack:encodeBin([]),
 
-   <<19, 6, 49, 40, 16, 2>> = eVPack:encode([1, 16], [{compact_arrays, true}]),
+   <<19, 6, 49, 40, 16, 2>> = eVPack:encodeBin([1, 16], ?VpArrYc, ?VpObjDef),
    Arr = <<"Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor. ", "Aenean massa. Cum sociis ...">>,
    ArrList = [Arr, 1, 2, 42],
-   <<19, _/binary>> = ArrBin = eVPack:encode(ArrList, ?vpArrYc, ?VpDefObjOpt),
-   ArrList = eVPack:decode(ArrBin),
+   <<19, _/binary>> = eVPack:encodeBin(ArrList, ?VpArrYc, ?VpObjDef),
+  %%  ArrList = eVPack:decode(ArrBin),
    ArrLists = <<2, 12, 2, 5, 49, 50, 51, 2, 5, 49, 50, 51>>,
    ArrsBin = [[1, 2, 3], [1, 2, 3]],
-   ArrLists = eVPack:encode(ArrsBin),
-   <<10>> = eVPack:encode(#{}),
-   <<11, 8, 1, 65, 97, 65, 98, 3>> = eVPack:encode(#{<<"a">> => <<"b">>}),
-   <<11, 13, 2, 65, 97, 65, 98, 65, 98, 65, 97, 3, 7>> = eVPack:encode(#{a => <<"b">>, b => <<"a">>}),
+   ArrLists = eVPack:encodeBin(ArrsBin),
+   <<10>> = eVPack:encodeBin(#{}),
+   <<15, 8, 1, 65, 97, 65, 98, 3>> = eVPack:encodeBin(#{<<"a">> => <<"b">>}),
+   <<15, 13, 2, 65, 97, 65, 98, 65, 98, 65, 97, 3, 7>> = eVPack:encodeBin(#{a => <<"b">>, b => <<"a">>}),
    Maps = #{<<"0">> =>
    #{<<"0">> => <<"test">>, <<"1">> => <<"test">>,
       <<"2">> => <<"test">>, <<"3">> => <<"test">>,
@@ -151,7 +150,7 @@ do() ->
       116, 65, 51, 68, 116, 101, 115, 116, 65, 52, 68, 116, 101, 115, 116, 3, 10, 17, 24, 31, 65, 52, 11, 43,
       5, 65, 48, 68, 116, 101, 115, 116, 65, 49, 68, 116, 101, 115, 116, 65, 50, 68, 116, 101, 115, 116, 65, 51, 68, 116, 101, 115,
       116, 65, 52, 68, 116, 101, 115, 116, 3, 10, 17, 24, 31, 3, 48, 93, 138, 183>>,
-   MapBin = eVPack:encode(Maps),
+   MapBin = eVPack:encodeBin(Maps, ?VpArrDef, ?VpObjNcYs),
    Mapss = #{<<"0">> =>
    #{<<"0">> => <<"test">>, <<"1">> => <<"test">>,
       <<"2">> => <<"test">>, <<"3">> => <<"test">>,
@@ -245,7 +244,8 @@ do() ->
       68, 116, 101, 115, 116, 65, 51, 68, 116, 101, 115, 116, 65, 52, 68, 116, 101, 115, 116, 65, 53, 68, 116, 101, 115, 116, 65, 54,
       68, 116, 101, 115, 116, 65, 55, 68, 116, 101, 115, 116, 65, 56, 68, 116, 101, 115, 116, 65, 57, 68, 116, 101,
       115, 116, 3, 10, 17, 24, 31, 38, 45, 52, 59, 66, 5, 0, 90, 0, 175, 0, 4, 1, 89, 1, 174, 1, 3, 2, 88, 2, 173, 2, 2, 3>>,
-   MapsBin = eVPack:encode(Mapss),
+   MapsBin = eVPack:encodeBin(Mapss, ?VpArrDef, ?VpObjNcYs),
+
    MapCom = #{<<"a">> => 12, <<"b">> => true, <<"c">> => <<"xyz">>},
    MapComBin = <<20, 16, 65, 97, 40, 12, 65, 98, 26, 65, 99, 67, 120, 121, 122, 3>>,
-   MapComBin = eVPack:encode(MapCom, ?VpDefArrOpt, ?vpObjYc).
+   MapComBin = eVPack:encodeBin(MapCom, ?VpArrDef, ?VpObjYc).
