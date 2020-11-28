@@ -17,8 +17,6 @@ test() ->
    end.
 
 do() ->
-   <<23>> = eVPack:encodeBin(illegal),
-   <<24>> = eVPack:encodeBin(nil),
    <<25>> = eVPack:encodeBin(false),
    <<26>> = eVPack:encodeBin(true),
    <<27, 102, 102, 102, 102, 102, 182, 96, 64>> = eVPack:encodeBin(1.33699999999999988631e+2),
