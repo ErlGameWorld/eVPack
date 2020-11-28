@@ -498,39 +498,39 @@ decoder(0, RestBin) ->
 decoder(1, RestBin) ->
    {[], RestBin};
 decoder(2, RestBin) ->
-   parseArrayWithoutIndexTable(2, RestBin);
+   parseArrayWithoutIndexTable(1, RestBin);
 decoder(3, RestBin) ->
-   parseArrayWithoutIndexTable(3, RestBin);
+   parseArrayWithoutIndexTable(2, RestBin);
 decoder(4, RestBin) ->
    parseArrayWithoutIndexTable(4, RestBin);
 decoder(5, RestBin) ->
-   parseArrayWithoutIndexTable(5, RestBin);
+   parseArrayWithoutIndexTable(8, RestBin);
 decoder(6, RestBin) ->
-   parseArrayWithIndexTable(6, RestBin);
+   parseArrayWithIndexTable(1, RestBin);
 decoder(7, RestBin) ->
-   parseArrayWithIndexTable(7, RestBin);
+   parseArrayWithIndexTable(2, RestBin);
 decoder(8, RestBin) ->
-   parseArrayWithIndexTable(8, RestBin);
+   parseArrayWithIndexTable(4, RestBin);
 decoder(9, RestBin) ->
-   parseArrayWithIndexTable(9, RestBin);
+   parseArrayWithIndexTable(8, RestBin);
 decoder(10, RestBin) ->
    {#{}, RestBin};
 decoder(11, RestBin) ->
-   parseObject(11, RestBin);
+   parseObject(1, RestBin);
 decoder(12, RestBin) ->
-   parseObject(12, RestBin);
+   parseObject(2, RestBin);
 decoder(13, RestBin) ->
-   parseObject(13, RestBin);
+   parseObject(4, RestBin);
 decoder(14, RestBin) ->
-   parseObject(14, RestBin);
+   parseObject(8, RestBin);
 decoder(15, RestBin) ->
-   parseObject(15, RestBin);
+   parseObject(1, RestBin);
 decoder(16, RestBin) ->
-   parseObject(16, RestBin);
+   parseObject(2, RestBin);
 decoder(17, RestBin) ->
-   parseObject(17, RestBin);
+   parseObject(4, RestBin);
 decoder(18, RestBin) ->
-   parseObject(18, RestBin);
+   parseObject(8, RestBin);
 decoder(19, RestBin) ->
    parseCompactArray(RestBin);
 decoder(20, RestBin) ->
@@ -1462,33 +1462,78 @@ parseArrayElements(DataBin, AccList) ->
    {Elem, Rest} = decoder(DataBin),
    parseArrayElements(Rest, [Elem | AccList]).
 
-parseArrayWithIndexTable(9, <<SumSize:64/integer-little-unsigned, RestBin/binary>>) ->
-   DataSize = SumSize - 1 - 8 - 8,
-   <<DataBin:DataSize/binary, Length:64/integer-little-unsigned, LeftBin/binary>> = RestBin,
-   IndexSize = Length * 8,
+parseArrayWithIndexTable(1, DataBin) ->
+   <<SumSize:8/integer-little-unsigned, Count:8/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 3 - ZerosSize - Count,
+   <<ArrData:ArrSize/binary, _Index:Count/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithIndexTable(2, DataBin) ->
+   <<SumSize:16/integer-little-unsigned, Count:16/integer-little-unsigned, RestBin/binary>> = DataBin,
+   IndexSize = 2 * Count,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 5 - ZerosSize - IndexSize,
+   <<ArrData:ArrSize/binary, _Index:IndexSize/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithIndexTable(4, DataBin) ->
+   <<SumSize:32/integer-little-unsigned, Count:32/integer-little-unsigned, RestBin/binary>> = DataBin,
+   IndexSize = 4 * Count,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 9 - ZerosSize - IndexSize,
+   <<ArrData:ArrSize/binary, _Index:IndexSize/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithIndexTable(8, DataBin) ->
+   <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = SumSize - 17,
+   <<DataBin:DataSize/binary, Count:64/integer-little-unsigned, LeftBin/binary>> = RestBin,
+   IndexSize = Count * 8,
    DataSize = DataSize - IndexSize,
    <<ArrData:DataSize/binary, _Index:IndexSize/binary>> = DataBin,
    ArrList = parseArrayElements(ArrData, []),
-   {ArrList, LeftBin};
-parseArrayWithIndexTable(Type, DataBin) ->
-   SizeBytes = 1 bsl (Type - 6),
-   <<SumSize:SizeBytes/integer-little-unsigned-unit:8, Length:SizeBytes/integer-little-unsigned-unit:8, RestBin/binary>> = DataBin,
-   IndexSize = SizeBytes * Length,
-   DataSize = erlang:byte_size(RestBin),
-   DataLeftBin = skipZeros(RestBin),
-   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
-   ArrSize = SumSize - 1 - 2 * SizeBytes - ZerosSize - IndexSize,
-   <<ArrData:ArrSize/binary, _Index:IndexSize/binary, LeftBin/binary>> = DataLeftBin,
-   ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin}.
 
-parseArrayWithoutIndexTable(Type, DataBin) ->
-   SizeBytes = 1 bsl (Type - 2),
-   <<SumSize:SizeBytes/integer-little-unsigned-unit:8, RestBin/binary>> = DataBin,
+parseArrayWithoutIndexTable(1, DataBin) ->
+   <<SumSize:8/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
    ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
-   ArrSize = SumSize - SizeBytes - 1 - ZerosSize,
+   ArrSize = SumSize - 2 - ZerosSize,
+   <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithoutIndexTable(2, DataBin) ->
+   <<SumSize:16/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 3 - ZerosSize,
+   <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithoutIndexTable(4, DataBin) ->
+   <<SumSize:32/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 5 - ZerosSize,
+   <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
+   ArrList = parseArrayElements(ArrData, []),
+   {ArrList, LeftBin};
+parseArrayWithoutIndexTable(8, DataBin) ->
+   <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = erlang:byte_size(RestBin),
+   DataLeftBin = skipZeros(RestBin),
+   ZerosSize = DataSize - erlang:byte_size(DataLeftBin),
+   ArrSize = SumSize - 9 - ZerosSize,
    <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin}.
@@ -1536,13 +1581,32 @@ parseLength(DataBin, Len, Pt, Reverse) ->
       true -> parseLength(LeftBin, NewLen, NewPt, Reverse)
    end.
 
-parseObject(Type, DataBin) ->
-   SizeBytes = 1 bsl (Type - 11),
-   <<SumSize:SizeBytes/integer-little-unsigned-unit:8, Length:SizeBytes/integer-little-unsigned-unit:8, ObjBin/binary>> = DataBin,
-   DataSize = SumSize - 1 - 2 * SizeBytes,
+parseObject(1, DataBin) ->
+   <<SumSize:8/integer-little-unsigned, Count:8/integer-little-unsigned, ObjBin/binary>> = DataBin,
+   DataSize = SumSize - 3,
    <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
-   IndexTableSize = Length * SizeBytes,
-   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Length, #{}, skipZeros(ZerosBin)),
+   {Obj, <<_IndexTable:Count/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, LeftBin};
+parseObject(2, DataBin) ->
+   <<SumSize:16/integer-little-unsigned, Count:16/integer-little-unsigned, ObjBin/binary>> = DataBin,
+   DataSize = SumSize - 5,
+   <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
+   IndexTableSize = Count * 2,
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, LeftBin};
+parseObject(4, DataBin) ->
+   <<SumSize:32/integer-little-unsigned, Count:32/integer-little-unsigned, ObjBin/binary>> = DataBin,
+   DataSize = SumSize - 9,
+   <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
+   IndexTableSize = Count * 4,
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, LeftBin};
+parseObject(8, DataBin) ->
+   <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
+   DataSize = SumSize - 17,
+   <<ObjBin:DataSize/binary, Count:64/integer-little-unsigned, LeftBin/binary>> = RestBin,
+   IndexTableSize = Count * 8,
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ObjBin)),
    {Obj, LeftBin}.
 
 parseObjectMembers(0, Obj, DataBin) ->
