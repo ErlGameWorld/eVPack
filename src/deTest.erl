@@ -27,8 +27,8 @@ do() ->
    1.33699999999999988631e+2 = eVPack:decode(<<27, 102, 102, 102, 102, 102, 182, 96, 64>>),
    -1.33699999999999988631e+2 = eVPack:decode(<<27, 102, 102, 102, 102, 102, 182, 96, 192>>),
    609976800000 = eVPack:decode(<<28, 0, 83, 115, 5, (-114), 0, 0, 0>>),
-   min_key = eVPack:decode(<<30>>),
-   max_key = eVPack:decode(<<31>>),
+   minKey = eVPack:decode(<<30>>),
+   maxKey = eVPack:decode(<<31>>),
 
    0 = eVPack:decode(<<48>>),
    1 = eVPack:decode(<<49>>),

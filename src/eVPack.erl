@@ -110,9 +110,6 @@ encodeAtom(false) -> {<<25/integer>>, 1};
 encodeAtom(true) -> {<<26/integer>>, 1};
 encodeAtom(minKey) -> {<<30/integer>>, 1};
 encodeAtom(maxKey) -> {<<31/integer>>, 1};
-encodeAtom(illegal) -> {<<23/integer>>, 1};
-encodeAtom(null) -> {<<24/integer>>, 1};
-encodeAtom(nil) -> {<<24/integer>>, 1};
 encodeAtom(Atom) ->
    encodeString(erlang:atom_to_binary(Atom, utf8)).
 
@@ -264,12 +261,7 @@ encodeMap(?VpObjNcNs, Map, ArrOpt) ->
       _ ->
          {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjNcNs, [], [], 0),
          IoData = lists:reverse(AccList),
-         case MapSize >= 1000 of
-            false ->
-               encodeUnSortMapIndexTable(IoData, MapSize, Offsets, SumSize);
-            _ ->
-               encodeUnSortMapIndexTable(erlang:iolist_to_binary(IoData), MapSize, Offsets, SumSize)
-         end
+         encodeUnSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
    end;
 encodeMap(?VpObjYc, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
@@ -279,12 +271,7 @@ encodeMap(?VpObjYc, Map, ArrOpt) ->
       _ ->
          {AccList, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjYc, [], 0),
          IoData = lists:reverse(AccList),
-         case MapSize >= 1000 of
-            false ->
-               encodeCompactData(<<20/integer>>, IoData, SumSize, MapSize);
-            _ ->
-               encodeCompactData(<<20/integer>>, erlang:iolist_to_binary(IoData), SumSize, MapSize)
-         end
+         encodeCompactData(<<20/integer>>, IoData, SumSize, MapSize)
    end;
 encodeMap(?VpObjNcYs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
@@ -296,12 +283,7 @@ encodeMap(?VpObjNcYs, Map, ArrOpt) ->
          StrKeys = [asKey(OneKey) || OneKey <- Keys],
          {AccList, Offsets, SumSize} = doEncodeMap(lists:sort(StrKeys), Map, ArrOpt, ?VpObjNcYs, [], [], 0),
          IoData = lists:reverse(AccList),
-         case MapSize >= 1000 of
-            false ->
-               encodeSortMapIndexTable(IoData, MapSize, Offsets, SumSize);
-            _ ->
-               encodeSortMapIndexTable(erlang:iolist_to_binary(IoData), MapSize, Offsets, SumSize)
-         end
+         encodeSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
    end.
 
 encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -322,7 +304,7 @@ encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<14/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 17), <<Count:64/integer-little-unsigned>>], AllSize};
+         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
          erlang:throw(<<"too much size">>)
    end.
@@ -345,7 +327,7 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<18/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 17), <<Count:64/integer-little-unsigned>>], AllSize};
+         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
          erlang:throw(<<"encode map too much size">>)
    end.
@@ -427,21 +409,11 @@ encodeList(?VpArrNc, List, ObjOpt) ->
          {AccList, Offsets, SumSize, Count, IsNotSameSize} = doEncodeList(List, ?VpArrNc, ObjOpt, [], [], 0, 0, init),
 
          IoData = lists:reverse(AccList),
-         case Count >= 1000 of
-            false ->
-               case IsNotSameSize of
-                  true ->
-                     encodeListWithIndexTable(IoData, Count, Offsets, SumSize);
-                  _ ->
-                     encodeListWithoutIndexTable(IoData, SumSize)
-               end;
+         case IsNotSameSize of
+            true ->
+               encodeListWithIndexTable(IoData, Count, Offsets, SumSize);
             _ ->
-               case IsNotSameSize of
-                  true ->
-                     encodeListWithIndexTable(erlang:iolist_to_binary(IoData), Count, Offsets, SumSize);
-                  _ ->
-                     encodeListWithoutIndexTable(erlang:iolist_to_binary(IoData), SumSize)
-               end
+               encodeListWithoutIndexTable(IoData, SumSize)
          end
    end;
 encodeList(?VpArrYc, List, ObjOpt) ->
@@ -450,14 +422,8 @@ encodeList(?VpArrYc, List, ObjOpt) ->
          {<<1/integer>>, 1};
       _ ->
          {AccList, SumSize, Count} = doEncodeList(List, ?VpArrYc, ObjOpt, [], 0, 0),
-
          IoData = lists:reverse(AccList),
-         case Count >= 1000 of
-            false ->
-               encodeCompactData(<<19/integer>>, IoData, SumSize, Count);
-            _ ->
-               encodeCompactData(<<19/integer>>, erlang:iolist_to_binary(IoData), SumSize, Count)
-         end
+         encodeCompactData(<<19/integer>>, IoData, SumSize, Count)
    end.
 
 encodeListWithoutIndexTable(IoData, SumSize) ->
@@ -500,7 +466,7 @@ encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<9/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 17), <<Count:64/integer-little-unsigned>>], AllSize};
+         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
          erlang:throw(<<"encode map too much size">>)
    end.
@@ -587,9 +553,9 @@ decoder(28, RestBin) ->
 decoder(29, _RestBin) ->
    erlang:throw({unsupported_type, 29});
 decoder(30, RestBin) ->
-   {min_key, RestBin};
+   {minKey, RestBin};
 decoder(31, RestBin) ->
-   {max_key, RestBin};
+   {maxKey, RestBin};
 decoder(32, RestBin) ->
    parseInt(1, RestBin);
 decoder(33, RestBin) ->
@@ -1590,6 +1556,3 @@ parseObjectMembers(Length, Obj, DataBin) ->
 skipZeros(<<0/integer, LeftBin/binary>>) ->
    skipZeros(LeftBin);
 skipZeros(DataBin) -> DataBin.
-
-
-
