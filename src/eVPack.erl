@@ -469,7 +469,7 @@ decodeAll(DataBin) ->
       <<>> ->
          {HeaderTerm, #{}};
       _  ->
-         {BodyTerm, _LeftBin} = decoder(DataBin),
+         {BodyTerm, _LeftBin} = decoder(BodyBin),
          {HeaderTerm, BodyTerm}
    end.
 
