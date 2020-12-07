@@ -7,11 +7,15 @@
 -import(maps, [iterator/1, next/1, keys/1]).
 
 -export([
-   encode/1
+   %% decode
+   decodeAll/1
+   , decodePart/1
+
+   %% encode
+   , encodeIo/1
    , encodeBin/1
-   , encode/3
+   , encodeIo/3
    , encodeBin/3
-   , decode/1
    , encodeAtom/1
    , encodeMap/3
    , encodeList/3
@@ -27,53 +31,25 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% encode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec encode(term()) -> {ok, vpack()} | {error, any()}.
-encode(Term) ->
-   %%{VPack, _Size} = encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt),
-   %%VPack.
-   try encoder(Term, ?VpArrDef, ?VpObjDef) of
-      {VPack, _Size} ->
-         VPack
-   catch
-      C:E:S ->
-         {C, E, S}
-   end.
+-spec encodeIo(term()) -> {ok, vpack()} | {error, any()}.
+encodeIo(Term) ->
+   {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
+   VPack.
 
 -spec encodeBin(term()) -> {ok, vpack()} | {error, any()}.
 encodeBin(Term) ->
-   %%{VPack, _Size} = encoder(Term, ?VpDefArrOpt, ?VpDefObjOpt),
-   %%iolist_to_binary(VPack).
-   try encoder(Term, ?VpArrDef, ?VpObjDef) of
-      {VPack, _Size} ->
-         iolist_to_binary(VPack)
-   catch
-      C:E:S ->
-         {C, E, S}
-   end.
+   {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
+   iolist_to_binary(VPack).
 
--spec encode(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
-encode(Term, ArrOpt, ObjOpt) ->
-   % {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
-   % VPack.
-   try encoder(Term, ArrOpt, ObjOpt) of
-      {VPack, _Size} ->
-         VPack
-   catch
-      C:E:S ->
-         {C, E, S}
-   end.
+-spec encodeIo(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
+encodeIo(Term, ArrOpt, ObjOpt) ->
+   {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
+   VPack.
 
 -spec encodeBin(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
 encodeBin(Term, ArrOpt, ObjOpt) ->
-   % {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
-   % iolist_to_binary(VPack).
-   try encoder(Term, ArrOpt, ObjOpt) of
-      {VPack, _Size} ->
-         iolist_to_binary(VPack)
-   catch
-      C:E:S ->
-         {C, E, S}
-   end.
+   {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
+   iolist_to_binary(VPack).
 
 encoder(Map, ArrOpt, ObjOpt) when erlang:is_map(Map) ->
    encodeMap(ObjOpt, Map, ArrOpt);
@@ -87,9 +63,10 @@ encoder(Float, _, _) when erlang:is_float(Float) ->
    encodeFloat(Float);
 encoder(List, ArrOpt, ObjOpt) when erlang:is_list(List) ->
    encodeList(ArrOpt, List, ObjOpt);
+encoder({?blob, Blob}, _, _) when erlang:is_binary(Blob) ->
+   encodeBlob(Blob);
 encoder(_Value, _, _) ->
-   {error, dataType(_Value)}.
-
+   erlang:throw({invalid_type, dataType(_Value), _Value}).
 
 dataType(Data) when is_list(Data) -> list;
 dataType(Data) when is_integer(Data) -> integer;
@@ -148,7 +125,7 @@ encodeInteger(-1) ->
 encodeInteger(Integer) ->
    if
       Integer < -9223372036854775808 ->
-         erlang:throw(<<"Cannot encode integers less than -9223372036854775808">>);
+         erlang:throw(too_small_integer);
       Integer < -36028797018963968 ->
          {<<39/integer, Integer:64/integer-little-signed>>, 9};
       Integer < -140737488355328 ->
@@ -182,7 +159,7 @@ encodeInteger(Integer) ->
       Integer < 18446744073709551616 ->
          {<<47/integer, Integer:64/integer-little-unsigned>>, 9};
       true ->
-         erlang:throw(<<"Cannot encode integers greater than 18446744073709551616">>)
+         erlang:throw(too_biger_integer)
    end.
 
 encodeFloat(Float) ->
@@ -193,24 +170,33 @@ encodeString(BinStr) ->
    if
       StrSize =< 126 ->
          {<<(StrSize + 64)/integer, BinStr/binary>>, StrSize + 1};
-      StrSize < 256 ->
-         {<<192/integer, StrSize:8/integer-little-unsigned, BinStr/binary>>, StrSize + 2};
-      StrSize < 65536 ->
-         {<<193/integer, StrSize:16/integer-little-unsigned, BinStr/binary>>, StrSize + 3};
-      StrSize < 16777216 ->
-         {<<194/integer, StrSize:24/integer-little-unsigned, BinStr/binary>>, StrSize + 4};
-      StrSize < 4294967296 ->
-         {<<195/integer, StrSize:32/integer-little-unsigned, BinStr/binary>>, StrSize + 5};
-      StrSize < 1099511627776 ->
-         {<<196/integer, StrSize:40/integer-little-unsigned, BinStr/binary>>, StrSize + 6};
-      StrSize < 281474976710656 ->
-         {<<197/integer, StrSize:48/integer-little-unsigned, BinStr/binary>>, StrSize + 7};
-      StrSize < 72057594037927936 ->
-         {<<198/integer, StrSize:56/integer-little-unsigned, BinStr/binary>>, StrSize + 8};
       StrSize < 18446744073709551616 ->
-         {<<199/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>, StrSize + 9};
+         {<<191/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>, StrSize + 9};
       true ->
-         {<<191/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>, StrSize + 9}
+         erlang:throw(too_max_str)
+   end.
+
+encodeBlob(Blob) ->
+   StrSize = erlang:byte_size(Blob),
+   if
+      StrSize < 256 ->
+         {<<192/integer, StrSize:8/integer-little-unsigned, Blob/binary>>, StrSize + 2};
+      StrSize < 65536 ->
+         {<<193/integer, StrSize:16/integer-little-unsigned, Blob/binary>>, StrSize + 3};
+      StrSize < 16777216 ->
+         {<<194/integer, StrSize:24/integer-little-unsigned, Blob/binary>>, StrSize + 4};
+      StrSize < 4294967296 ->
+         {<<195/integer, StrSize:32/integer-little-unsigned, Blob/binary>>, StrSize + 5};
+      StrSize < 1099511627776 ->
+         {<<196/integer, StrSize:40/integer-little-unsigned, Blob/binary>>, StrSize + 6};
+      StrSize < 281474976710656 ->
+         {<<197/integer, StrSize:48/integer-little-unsigned, Blob/binary>>, StrSize + 7};
+      StrSize < 72057594037927936 ->
+         {<<198/integer, StrSize:56/integer-little-unsigned, Blob/binary>>, StrSize + 8};
+      StrSize < 18446744073709551616 ->
+         {<<199/integer, StrSize:64/integer-little-unsigned, Blob/binary>>, StrSize + 9};
+      true ->
+         erlang:throw(too_max_blob)
    end.
 
 doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, SumSize) ->
@@ -249,7 +235,7 @@ doEncodeMap([OneKeys | Left], Map, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
                {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
                doEncodeMap(Left, Map, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
             _ ->
-               erlang:throw(<<"doEncodeMap not found the value ", OneKeys/binary>>)
+               erlang:throw({no_map_value, OneKeys})
          end
    end.
 
@@ -306,7 +292,7 @@ encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<14/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(<<"too much size">>)
+         erlang:throw(too_much_so_map_size)
    end.
 
 encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -329,7 +315,7 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<18/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(<<"encode map too much size">>)
+         erlang:throw(too_much_unso_map_size)
    end.
 
 buildIndexTable_1(Offsets, StartSize) ->
@@ -367,7 +353,7 @@ compactSize(AllSize) ->
    LastSize =
       case TemByte == erlang:ceil(FinalSize / 128) of
          false -> FinalSize + 1;
-         true -> FinalSize
+         _ -> FinalSize
       end,
    {compactInteger(LastSize, false), LastSize}.
 
@@ -380,7 +366,7 @@ encodeCompactData(Type, IoData, SumSize, Count) ->
 
 asKey(Value) when erlang:is_atom(Value) -> erlang:atom_to_binary(Value, utf8);
 asKey(Value) when erlang:is_binary(Value) -> Value;
-asKey(_Value) -> erlang:error(<<"Invalid key">>).
+asKey(_Value) -> erlang:error(invalid_key).
 
 doEncodeList([], _ArrOpt, _ObjOpt, AccList, SumSize, Count) ->
    {AccList, SumSize, Count};
@@ -445,7 +431,7 @@ encodeListWithoutIndexTable(IoData, SumSize) ->
          Header = <<5/integer, AllSize:8/integer-little-unsigned-unit:8>>,
          {[Header, IoData], AllSize};
       true ->
-         erlang:throw(<<"encode map too much size">>)
+         erlang:throw(too_much_wo_list_size)
    end.
 
 encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -468,22 +454,25 @@ encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<9/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(<<"encode map too much size">>)
+         erlang:throw(too_much_wi_list_size)
    end.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  decode  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
--spec decode(vpack()) -> term().
-decode(DataBin) ->
-   % {Term, _} = decoder(DataBin),
-   % Term.
-   try decoder(DataBin) of
-      {Term, _} ->
-         Term
-   catch
-      C:E:S ->
-         {C, E, S}
+-spec decodeAll(vpack()) -> {term(), term()}.
+decodeAll(DataBin) ->
+   {HeaderTerm, BodyBin} = decoder(DataBin),
+   case BodyBin of
+      <<>> ->
+         {HeaderTerm, #{}};
+      _  ->
+         {BodyTerm, _LeftBin} = decoder(DataBin),
+         {HeaderTerm, BodyTerm}
    end.
+
+-spec decodePart(vpack()) -> {term(), binary()}.
+decodePart(DataBin) ->
+   decoder(DataBin).
 
 decoder(DataBin) ->
    case DataBin of

@@ -16,4 +16,6 @@
 -define(VpObjOpts(VpAllOpts), VpAllOpts bsr 1).        %% 获取Obj选项
 -define(VpArrOpts(VpAllOpts), VpAllOpts band 1).       %% 获取Arr选项
 
+-define(blob, blob).          %% 二进制tag 标记
+
 -define(VpBinaryCopyRatio, 1.2).
