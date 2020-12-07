@@ -9,6 +9,7 @@
 -export([
    %% decode
    decodeAll/1
+   , decodeHeader/1
    , decodePart/1
 
    %% encode
@@ -471,6 +472,11 @@ decodeAll(DataBin) ->
          {BodyTerm, _LeftBin} = decoder(DataBin),
          {HeaderTerm, BodyTerm}
    end.
+
+-spec decodeHeader(vpack()) -> term().
+decodeHeader(DataBin) ->
+   {HeaderTerm, _BodyBin} = decoder(DataBin),
+   HeaderTerm.
 
 -spec decodePart(vpack()) -> {term(), binary()}.
 decodePart(DataBin) ->
