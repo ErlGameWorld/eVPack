@@ -12,10 +12,12 @@
    , decodePart/1
 
    %% encode
-   , encodeIo/1
+   , encodeIol/1
    , encodeBin/1
-   , encodeIo/3
+   , encodeIol/3
    , encodeBin/3
+
+   %% other API
    , encodeAtom/1
    , encodeMap/3
    , encodeList/3
@@ -31,22 +33,22 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% encode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec encodeIo(term()) -> {ok, vpack()} | {error, any()}.
-encodeIo(Term) ->
+-spec encodeIol(term()) -> vpack() | {error, any()}.
+encodeIol(Term) ->
    {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
    VPack.
 
--spec encodeBin(term()) -> {ok, vpack()} | {error, any()}.
+-spec encodeBin(term()) -> vpack() | {error, any()}.
 encodeBin(Term) ->
    {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
    iolist_to_binary(VPack).
 
--spec encodeIo(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
-encodeIo(Term, ArrOpt, ObjOpt) ->
+-spec encodeIol(term(), vpOpt(), vpOpt()) -> vpack() | {error, any()}.
+encodeIol(Term, ArrOpt, ObjOpt) ->
    {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
    VPack.
 
--spec encodeBin(term(), vpOpt(), vpOpt()) -> {ok, vpack()} | {error, any()}.
+-spec encodeBin(term(), vpOpt(), vpOpt()) -> vpack() | {error, any()}.
 encodeBin(Term, ArrOpt, ObjOpt) ->
    {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
    iolist_to_binary(VPack).
@@ -66,7 +68,7 @@ encoder(List, ArrOpt, ObjOpt) when erlang:is_list(List) ->
 encoder({?blob, Blob}, _, _) when erlang:is_binary(Blob) ->
    encodeBlob(Blob);
 encoder(_Value, _, _) ->
-   erlang:throw({invalid_type, dataType(_Value), _Value}).
+   erlang:throw({error, {invalid_type, dataType(_Value), _Value}}).
 
 dataType(Data) when is_list(Data) -> list;
 dataType(Data) when is_integer(Data) -> integer;
@@ -125,7 +127,7 @@ encodeInteger(-1) ->
 encodeInteger(Integer) ->
    if
       Integer < -9223372036854775808 ->
-         erlang:throw(too_small_integer);
+         erlang:throw({error, too_small_integer});
       Integer < -36028797018963968 ->
          {<<39/integer, Integer:64/integer-little-signed>>, 9};
       Integer < -140737488355328 ->
@@ -159,7 +161,7 @@ encodeInteger(Integer) ->
       Integer < 18446744073709551616 ->
          {<<47/integer, Integer:64/integer-little-unsigned>>, 9};
       true ->
-         erlang:throw(too_biger_integer)
+         erlang:throw({error, too_big_integer})
    end.
 
 encodeFloat(Float) ->
@@ -173,7 +175,7 @@ encodeString(BinStr) ->
       StrSize < 18446744073709551616 ->
          {<<191/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>, StrSize + 9};
       true ->
-         erlang:throw(too_max_str)
+         erlang:throw({error, too_max_str})
    end.
 
 encodeBlob(Blob) ->
@@ -196,7 +198,7 @@ encodeBlob(Blob) ->
       StrSize < 18446744073709551616 ->
          {<<199/integer, StrSize:64/integer-little-unsigned, Blob/binary>>, StrSize + 9};
       true ->
-         erlang:throw(too_max_blob)
+         erlang:throw({error, too_max_blob})
    end.
 
 doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, SumSize) ->
@@ -235,7 +237,7 @@ doEncodeMap([OneKeys | Left], Map, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
                {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
                doEncodeMap(Left, Map, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
             _ ->
-               erlang:throw({no_map_value, OneKeys})
+               erlang:throw({error, {no_map_value, OneKeys}})
          end
    end.
 
@@ -292,7 +294,7 @@ encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<14/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(too_much_so_map_size)
+         erlang:throw({error, too_much_sort_map_size})
    end.
 
 encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -315,7 +317,7 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<18/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(too_much_unso_map_size)
+         erlang:throw({error, too_much_unsort_map_size})
    end.
 
 buildIndexTable_1(Offsets, StartSize) ->
@@ -366,7 +368,7 @@ encodeCompactData(Type, IoData, SumSize, Count) ->
 
 asKey(Value) when erlang:is_atom(Value) -> erlang:atom_to_binary(Value, utf8);
 asKey(Value) when erlang:is_binary(Value) -> Value;
-asKey(_Value) -> erlang:error(invalid_key).
+asKey(_Value) -> erlang:throw({error, invalid_key}).
 
 doEncodeList([], _ArrOpt, _ObjOpt, AccList, SumSize, Count) ->
    {AccList, SumSize, Count};
@@ -431,7 +433,7 @@ encodeListWithoutIndexTable(IoData, SumSize) ->
          Header = <<5/integer, AllSize:8/integer-little-unsigned-unit:8>>,
          {[Header, IoData], AllSize};
       true ->
-         erlang:throw(too_much_wo_list_size)
+         erlang:throw({error, too_much_wo_list_size})
    end.
 
 encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -454,7 +456,7 @@ encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
          Header = <<9/integer, AllSize:64/integer-little-unsigned>>,
          {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
-         erlang:throw(too_much_wi_list_size)
+         erlang:throw({error, too_much_wi_list_size})
    end.
 
 
@@ -479,29 +481,29 @@ decoder(DataBin) ->
       <<Type/integer, RestBin/bitstring>> ->
          decoder(Type, RestBin);
       _ ->
-         erlang:throw(unexpected_end)
+         erlang:throw({error, unexpected_end})
    end.
 
 decoder(0, RestBin) ->
-   erlang:throw({unsupported_type, RestBin});
+   erlang:throw({error, {unsupported_type, RestBin}});
 decoder(1, RestBin) ->
    {[], RestBin};
 decoder(2, RestBin) ->
-   parseArrayWithoutIndexTable(1, RestBin);
+   parseArrWithoutIndexTable(1, RestBin);
 decoder(3, RestBin) ->
-   parseArrayWithoutIndexTable(2, RestBin);
+   parseArrWithoutIndexTable(2, RestBin);
 decoder(4, RestBin) ->
-   parseArrayWithoutIndexTable(4, RestBin);
+   parseArrWithoutIndexTable(4, RestBin);
 decoder(5, RestBin) ->
-   parseArrayWithoutIndexTable(8, RestBin);
+   parseArrWithoutIndexTable(8, RestBin);
 decoder(6, RestBin) ->
-   parseArrayWithIndexTable(1, RestBin);
+   parseArrWithIndexTable(1, RestBin);
 decoder(7, RestBin) ->
-   parseArrayWithIndexTable(2, RestBin);
+   parseArrWithIndexTable(2, RestBin);
 decoder(8, RestBin) ->
-   parseArrayWithIndexTable(4, RestBin);
+   parseArrWithIndexTable(4, RestBin);
 decoder(9, RestBin) ->
-   parseArrayWithIndexTable(8, RestBin);
+   parseArrWithIndexTable(8, RestBin);
 decoder(10, RestBin) ->
    {#{}, RestBin};
 decoder(11, RestBin) ->
@@ -521,13 +523,13 @@ decoder(17, RestBin) ->
 decoder(18, RestBin) ->
    parseObject(8, RestBin);
 decoder(19, RestBin) ->
-   parseCompactArray(RestBin);
+   parseCompactArr(RestBin);
 decoder(20, RestBin) ->
-   parseCompactObject(RestBin);
+   parseCompactObj(RestBin);
 decoder(21, _RestBin) ->
-   erlang:throw({unsupported_type, 21});
+   erlang:throw({error, {unsupported_type, 21}});
 decoder(22, _RestBin) ->
-   erlang:throw({unsupported_type, 22});
+   erlang:throw({error, {unsupported_type, 22}});
 decoder(23, RestBin) ->
    {illegal, RestBin};
 decoder(24, RestBin) -> {undefined, RestBin};
@@ -540,7 +542,7 @@ decoder(28, RestBin) ->
    <<TimeMs:64/integer-little-unsigned, LeftBin/bitstring>> = RestBin,
    {TimeMs, LeftBin};
 decoder(29, _RestBin) ->
-   erlang:throw({unsupported_type, 29});
+   erlang:throw({error, {unsupported_type, 29}});
 decoder(30, RestBin) ->
    {minKey, RestBin};
 decoder(31, RestBin) ->
@@ -1443,7 +1445,7 @@ decoder(199, RestBin) ->
          {BinStr, LeftBin}
    end;
 decoder(_, _) ->
-   erlang:throw(unexpected_end).
+   erlang:throw({error, unexpected_end}).
 
 
 parseArrayElements(<<>>, AccList) -> lists:reverse(AccList);
@@ -1451,7 +1453,7 @@ parseArrayElements(DataBin, AccList) ->
    {Elem, Rest} = decoder(DataBin),
    parseArrayElements(Rest, [Elem | AccList]).
 
-parseArrayWithIndexTable(1, DataBin) ->
+parseArrWithIndexTable(1, DataBin) ->
    <<SumSize:8/integer-little-unsigned, Count:8/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
@@ -1460,7 +1462,7 @@ parseArrayWithIndexTable(1, DataBin) ->
    <<ArrData:ArrSize/binary, _Index:Count/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithIndexTable(2, DataBin) ->
+parseArrWithIndexTable(2, DataBin) ->
    <<SumSize:16/integer-little-unsigned, Count:16/integer-little-unsigned, RestBin/binary>> = DataBin,
    IndexSize = 2 * Count,
    DataSize = erlang:byte_size(RestBin),
@@ -1470,7 +1472,7 @@ parseArrayWithIndexTable(2, DataBin) ->
    <<ArrData:ArrSize/binary, _Index:IndexSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithIndexTable(4, DataBin) ->
+parseArrWithIndexTable(4, DataBin) ->
    <<SumSize:32/integer-little-unsigned, Count:32/integer-little-unsigned, RestBin/binary>> = DataBin,
    IndexSize = 4 * Count,
    DataSize = erlang:byte_size(RestBin),
@@ -1480,7 +1482,7 @@ parseArrayWithIndexTable(4, DataBin) ->
    <<ArrData:ArrSize/binary, _Index:IndexSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithIndexTable(8, DataBin) ->
+parseArrWithIndexTable(8, DataBin) ->
    <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = SumSize - 17,
    <<DataBin:DataSize/binary, Count:64/integer-little-unsigned, LeftBin/binary>> = RestBin,
@@ -1490,7 +1492,7 @@ parseArrayWithIndexTable(8, DataBin) ->
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin}.
 
-parseArrayWithoutIndexTable(1, DataBin) ->
+parseArrWithoutIndexTable(1, DataBin) ->
    <<SumSize:8/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
@@ -1499,7 +1501,7 @@ parseArrayWithoutIndexTable(1, DataBin) ->
    <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithoutIndexTable(2, DataBin) ->
+parseArrWithoutIndexTable(2, DataBin) ->
    <<SumSize:16/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
@@ -1508,7 +1510,7 @@ parseArrayWithoutIndexTable(2, DataBin) ->
    <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithoutIndexTable(4, DataBin) ->
+parseArrWithoutIndexTable(4, DataBin) ->
    <<SumSize:32/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
@@ -1517,7 +1519,7 @@ parseArrayWithoutIndexTable(4, DataBin) ->
    <<ArrData:ArrSize/binary, LeftBin/binary>> = DataLeftBin,
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin};
-parseArrayWithoutIndexTable(8, DataBin) ->
+parseArrWithoutIndexTable(8, DataBin) ->
    <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = erlang:byte_size(RestBin),
    DataLeftBin = skipZeros(RestBin),
@@ -1527,7 +1529,7 @@ parseArrayWithoutIndexTable(8, DataBin) ->
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, LeftBin}.
 
-parseCompactArray(DataBin) ->
+parseCompactArr(DataBin) ->
    {ArrData, _Length, RestBin} = parseCompactHeader(DataBin),
    ArrList = parseArrayElements(ArrData, []),
    {ArrList, RestBin}.
@@ -1539,9 +1541,9 @@ parseCompactHeader(DataBin) ->
    {Length, HeaderBin} = parseLength(ArrData, 0, 0, true),
    {HeaderBin, Length, LeftBin}.
 
-parseCompactObject(DataBin) ->
+parseCompactObj(DataBin) ->
    {ObjData, Length, RestBin} = parseCompactHeader(DataBin),
-   {Obj, <<>>} = parseObjectMembers(Length, #{}, ObjData),
+   {Obj, <<>>} = parseObjMembers(Length, #{}, ObjData),
    {Obj, RestBin}.
 
 parseInt(IntegerSize, DataBin) ->
@@ -1567,44 +1569,44 @@ parseLength(DataBin, Len, Pt, Reverse) ->
    NewPt = Pt + 7,
    case LastV band 128 /= 0 of
       false -> {NewLen, LeftBin};
-      true -> parseLength(LeftBin, NewLen, NewPt, Reverse)
+      _ -> parseLength(LeftBin, NewLen, NewPt, Reverse)
    end.
 
 parseObject(1, DataBin) ->
    <<SumSize:8/integer-little-unsigned, Count:8/integer-little-unsigned, ObjBin/binary>> = DataBin,
    DataSize = SumSize - 3,
    <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
-   {Obj, <<_IndexTable:Count/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, <<_IndexTable:Count/binary>>} = parseObjMembers(Count, #{}, skipZeros(ZerosBin)),
    {Obj, LeftBin};
 parseObject(2, DataBin) ->
    <<SumSize:16/integer-little-unsigned, Count:16/integer-little-unsigned, ObjBin/binary>> = DataBin,
    DataSize = SumSize - 5,
    <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
    IndexTableSize = Count * 2,
-   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjMembers(Count, #{}, skipZeros(ZerosBin)),
    {Obj, LeftBin};
 parseObject(4, DataBin) ->
    <<SumSize:32/integer-little-unsigned, Count:32/integer-little-unsigned, ObjBin/binary>> = DataBin,
    DataSize = SumSize - 9,
    <<ZerosBin:DataSize/binary, LeftBin/binary>> = ObjBin,
    IndexTableSize = Count * 4,
-   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ZerosBin)),
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjMembers(Count, #{}, skipZeros(ZerosBin)),
    {Obj, LeftBin};
 parseObject(8, DataBin) ->
    <<SumSize:64/integer-little-unsigned, RestBin/binary>> = DataBin,
    DataSize = SumSize - 17,
    <<ObjBin:DataSize/binary, Count:64/integer-little-unsigned, LeftBin/binary>> = RestBin,
    IndexTableSize = Count * 8,
-   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjectMembers(Count, #{}, skipZeros(ObjBin)),
+   {Obj, <<_IndexTable:IndexTableSize/binary>>} = parseObjMembers(Count, #{}, skipZeros(ObjBin)),
    {Obj, LeftBin}.
 
-parseObjectMembers(0, Obj, DataBin) ->
+parseObjMembers(0, Obj, DataBin) ->
    {Obj, DataBin};
-parseObjectMembers(Length, Obj, DataBin) ->
+parseObjMembers(Length, Obj, DataBin) ->
    {Key, ValueDataBin} = decoder(DataBin),
    {Value, LeftBin} = decoder(ValueDataBin),
    NewObj = Obj#{Key => Value},
-   parseObjectMembers(Length - 1, NewObj, LeftBin).
+   parseObjMembers(Length - 1, NewObj, LeftBin).
 
 skipZeros(<<0/integer, LeftBin/binary>>) ->
    skipZeros(LeftBin);
