@@ -322,16 +322,16 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
    end.
 
 buildIndexTable_1(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
+   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
 
 buildIndexTable_2(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
+   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
 
 buildIndexTable_4(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
+   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
 
 buildIndexTable_8(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
+   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
 
 compactIntegerList(Integer, AccList) ->
    case Integer < 128 of
