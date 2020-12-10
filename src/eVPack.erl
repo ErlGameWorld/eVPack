@@ -10,7 +10,7 @@
    %% decode
    decodeAll/1
    , decodeHeader/1
-   , decodePart/1
+   , decoder/1
 
    %% encode
    , encodeIol/1
@@ -469,10 +469,7 @@ decodeHeader(DataBin) ->
    {HeaderTerm, _BodyBin} = decoder(DataBin),
    HeaderTerm.
 
--spec decodePart(vpack()) -> {term(), binary()}.
-decodePart(DataBin) ->
-   decoder(DataBin).
-
+-spec decoder(vpack()) -> {term(), binary()}.
 decoder(DataBin) ->
    case DataBin of
       <<Type/integer, RestBin/bitstring>> ->
