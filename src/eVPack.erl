@@ -25,10 +25,6 @@
    , encodeFloat/1
    , encodeString/1
    , encodeInteger/1
-   , buildIndexTable_1/2
-   , buildIndexTable_2/2
-   , buildIndexTable_4/2
-   , buildIndexTable_8/2
 ]).
 
 
@@ -222,35 +218,26 @@ doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
          {AccList, Offsets, SumSize}
    end.
 
-doEncodeMap([], _Map, _ArrOpt, _ObjOpt, AccList, Offsets, SumSize) ->
-   {AccList, Offsets, SumSize};
-doEncodeMap([OneKeys | Left], Map, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
-   case Map of
-      #{OneKeys := Value} ->
-         {KeyEn, KeySize} = encodeString(OneKeys),
+doEncodeSortMap(Iterator, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
+   case maps:next(Iterator) of
+      {Key, Value, NextIter} ->
+         KeyStr = asKey(Key),
+         {KeyEn, KeySize} = encodeString(KeyStr),
          {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
-         doEncodeMap(Left, Map, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
-      _ ->
-         AtomKey = binary_to_atom(OneKeys, utf8),
-         case Map of
-            #{AtomKey := Value} ->
-               {KeyEn, KeySize} = encodeString(OneKeys),
-               {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
-               doEncodeMap(Left, Map, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
-            _ ->
-               erlang:throw({error, {no_map_value, OneKeys}})
-         end
+         doEncodeSortMap(NextIter, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [{KeyStr, SumSize} | Offsets], SumSize + KeySize + ValueSize);
+      none ->
+         {AccList, Offsets, SumSize}
    end.
 
-encodeMap(?VpObjNcNs, Map, ArrOpt) ->
+encodeMap(?VpObjNcYs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
          {<<10/integer>>, 1};
       _ ->
-         {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjNcNs, [], [], 0),
+         {AccList, Offsets, SumSize} = doEncodeSortMap(maps:iterator(Map), ArrOpt, ?VpObjNcYs, [], [], 0),
          IoData = lists:reverse(AccList),
-         encodeUnSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
+         encodeSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
    end;
 encodeMap(?VpObjYc, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
@@ -262,17 +249,15 @@ encodeMap(?VpObjYc, Map, ArrOpt) ->
          IoData = lists:reverse(AccList),
          encodeCompactData(<<20/integer>>, IoData, SumSize, MapSize)
    end;
-encodeMap(?VpObjNcYs, Map, ArrOpt) ->
+encodeMap(?VpObjNcNs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
          {<<10/integer>>, 1};
       _ ->
-         Keys = maps:keys(Map),
-         StrKeys = [asKey(OneKey) || OneKey <- Keys],
-         {AccList, Offsets, SumSize} = doEncodeMap(lists:sort(StrKeys), Map, ArrOpt, ?VpObjNcYs, [], [], 0),
+         {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjNcNs, [], [], 0),
          IoData = lists:reverse(AccList),
-         encodeSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
+         encodeUnSortMapIndexTable(IoData, MapSize, Offsets, SumSize)
    end.
 
 encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
@@ -281,19 +266,19 @@ encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize < 253 ->
          AllSize = TemSize + 3,
          Header = <<11/integer, AllSize:8/integer-unsigned, Count:8/integer-unsigned>>,
-         {[Header, IoData, buildIndexTable_1(Offsets, 3)], AllSize};
+         {[Header, IoData, buildSMIndexTable_1(Offsets, 3)], AllSize};
       TemSize + Count < 65531 ->
          AllSize = TemSize + Count + 5,
          Header = <<12/integer, AllSize:16/integer-little-unsigned, Count:16/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_2(Offsets, 5)], AllSize};
+         {[Header, IoData, buildSMIndexTable_2(Offsets, 5)], AllSize};
       TemSize + Count * 3 < 4294967287 ->
          AllSize = TemSize + Count * 3 + 9,
          Header = <<13/integer, AllSize:32/integer-little-unsigned, Count:32/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_4(Offsets, 9)], AllSize};
+         {[Header, IoData, buildSMIndexTable_4(Offsets, 9)], AllSize};
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<14/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
+         {[Header, IoData, buildSMIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
       true ->
          erlang:throw({error, too_much_sort_map_size})
    end.
@@ -322,16 +307,22 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
    end.
 
 buildIndexTable_1(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
-
+   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
 buildIndexTable_2(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
-
+   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
 buildIndexTable_4(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
-
+   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
 buildIndexTable_8(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- Offsets>>.
+   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
+
+buildSMIndexTable_1(Offsets, StartSize) ->
+   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+buildSMIndexTable_2(Offsets, StartSize) ->
+   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+buildSMIndexTable_4(Offsets, StartSize) ->
+   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+buildSMIndexTable_8(Offsets, StartSize) ->
+   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
 
 compactIntegerList(Integer, AccList) ->
    case Integer < 128 of
