@@ -11,6 +11,8 @@
    decodeAll/1
    , decodeHeader/1
    , decoder/1
+   %% for test
+   , decode/1
 
    %% encode
    , encodeIol/1
@@ -477,6 +479,9 @@ decoder(DataBin) ->
       _ ->
          erlang:throw({error, unexpected_end})
    end.
+
+decode(DataBin) ->
+   element(1, decoder(DataBin)).
 
 decoder(0, RestBin) ->
    erlang:throw({error, {unsupported_type, RestBin}});
@@ -1371,72 +1376,72 @@ decoder(192, RestBin) ->
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(193, RestBin) ->
    <<Length:2/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(194, RestBin) ->
    <<Length:3/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(195, RestBin) ->
    <<Length:4/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(196, RestBin) ->
    <<Length:5/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(197, RestBin) ->
    <<Length:6/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(198, RestBin) ->
    <<Length:7/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(199, RestBin) ->
    <<Length:8/integer-little-unsigned-unit:8, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(_, _) ->
    erlang:throw({error, unexpected_end}).
