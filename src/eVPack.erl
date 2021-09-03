@@ -29,28 +29,29 @@
    , encodeInteger/1
 ]).
 
+setSV(Size) ->
+   erlang:put('$VPSize', Size).
+
+getSV() ->
+   erlang:get('$VPSize').
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% encode %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 -spec encodeIol(term()) -> vpack() | {error, any()}.
 encodeIol(Term) ->
-   {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
-   VPack.
+   encoder(Term, ?VpArrDef, ?VpObjDef).
 
 -spec encodeBin(term()) -> vpack() | {error, any()}.
 encodeBin(Term) ->
-   {VPack, _Size} = encoder(Term, ?VpArrDef, ?VpObjDef),
-   iolist_to_binary(VPack).
+   iolist_to_binary(encoder(Term, ?VpArrDef, ?VpObjDef)).
 
 -spec encodeIol(term(), vpOpt(), vpOpt()) -> vpack() | {error, any()}.
 encodeIol(Term, ArrOpt, ObjOpt) ->
-   {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
-   VPack.
+   encoder(Term, ArrOpt, ObjOpt).
 
 -spec encodeBin(term(), vpOpt(), vpOpt()) -> vpack() | {error, any()}.
 encodeBin(Term, ArrOpt, ObjOpt) ->
-   {VPack, _Size} = encoder(Term, ArrOpt, ObjOpt),
-   iolist_to_binary(VPack).
+   iolist_to_binary(encoder(Term, ArrOpt, ObjOpt)).
 
 encoder(Map, ArrOpt, ObjOpt) when erlang:is_map(Map) ->
    encodeMap(ObjOpt, Map, ArrOpt);
@@ -83,96 +84,115 @@ dataType(Data) when is_pid(Data) -> pid;
 dataType(Data) when is_port(Data) -> port;
 dataType(_Data) -> not_know.
 
-encodeAtom(undefined) -> {<<24/integer>>, 1};
-encodeAtom(false) -> {<<25/integer>>, 1};
-encodeAtom(true) -> {<<26/integer>>, 1};
-encodeAtom(minKey) -> {<<30/integer>>, 1};
-encodeAtom(maxKey) -> {<<31/integer>>, 1};
+encodeAtom(undefined) -> setSV(1), <<24/integer>>;
+encodeAtom(false) -> setSV(1), <<25/integer>>;
+encodeAtom(true) -> setSV(1), <<26/integer>>;
+encodeAtom(minKey) -> setSV(1), <<30/integer>>;
+encodeAtom(maxKey) -> setSV(1), <<31/integer>>;
 encodeAtom(Atom) ->
    encodeString(erlang:atom_to_binary(Atom, utf8)).
 
 encodeInteger(0) ->
-   {<<48/integer>>, 1};
+   setSV(1), <<48/integer>>;
 encodeInteger(1) ->
-   {<<49/integer>>, 1};
+   setSV(1), <<49/integer>>;
 encodeInteger(2) ->
-   {<<50/integer>>, 1};
+   setSV(1), <<50/integer>>;
 encodeInteger(3) ->
-   {<<51/integer>>, 1};
+   setSV(1), <<51/integer>>;
 encodeInteger(4) ->
-   {<<52/integer>>, 1};
+   setSV(1), <<52/integer>>;
 encodeInteger(5) ->
-   {<<53/integer>>, 1};
+   setSV(1), <<53/integer>>;
 encodeInteger(6) ->
-   {<<54/integer>>, 1};
+   setSV(1), <<54/integer>>;
 encodeInteger(7) ->
-   {<<55/integer>>, 1};
+   setSV(1), <<55/integer>>;
 encodeInteger(8) ->
-   {<<56/integer>>, 1};
+   setSV(1), <<56/integer>>;
 encodeInteger(9) ->
-   {<<57/integer>>, 1};
+   setSV(1), <<57/integer>>;
 encodeInteger(-6) ->
-   {<<58/integer>>, 1};
+   setSV(1), <<58/integer>>;
 encodeInteger(-5) ->
-   {<<59/integer>>, 1};
+   setSV(1), <<59/integer>>;
 encodeInteger(-4) ->
-   {<<60/integer>>, 1};
+   setSV(1), <<60/integer>>;
 encodeInteger(-3) ->
-   {<<61/integer>>, 1};
+   setSV(1), <<61/integer>>;
 encodeInteger(-2) ->
-   {<<62/integer>>, 1};
+   setSV(1), <<62/integer>>;
 encodeInteger(-1) ->
-   {<<63/integer>>, 1};
+   setSV(1), <<63/integer>>;
 encodeInteger(Integer) ->
    if
       Integer < -9223372036854775808 ->
          erlang:throw({error, too_small_integer});
       Integer < -36028797018963968 ->
-         {<<39/integer, Integer:64/integer-little-signed>>, 9};
+         setSV(9),
+         <<39/integer, Integer:64/integer-little-signed>>;
       Integer < -140737488355328 ->
-         {<<38/integer, Integer:56/integer-little-signed>>, 8};
+         setSV(8),
+         <<38/integer, Integer:56/integer-little-signed>>;
       Integer < -549755813888 ->
-         {<<37/integer, Integer:48/integer-little-signed>>, 7};
+         setSV(7),
+         <<37/integer, Integer:48/integer-little-signed>>;
       Integer < -2147483648 ->
-         {<<36/integer, Integer:40/integer-little-signed>>, 6};
+         setSV(6),
+         <<36/integer, Integer:40/integer-little-signed>>;
       Integer < -8388608 ->
-         {<<35/integer, Integer:32/integer-little-signed>>, 5};
+         setSV(5),
+         <<35/integer, Integer:32/integer-little-signed>>;
       Integer < -32768 ->
-         {<<34/integer, Integer:24/integer-little-signed>>, 4};
+         setSV(4),
+         <<34/integer, Integer:24/integer-little-signed>>;
       Integer < -128 ->
-         {<<33/integer, Integer:16/integer-little-signed>>, 3};
+         setSV(3),
+         <<33/integer, Integer:16/integer-little-signed>>;
       Integer < 0 ->
-         {<<32/integer, Integer:8/integer-little-unsigned>>, 2};
+         setSV(2),
+         <<32/integer, Integer:8/integer-little-unsigned>>;
       Integer < 256 ->
-         {<<40/integer, Integer:8/integer-little-unsigned>>, 2};
+         setSV(2),
+         <<40/integer, Integer:8/integer-little-unsigned>>;
       Integer < 65536 ->
-         {<<41/integer, Integer:16/integer-little-unsigned>>, 3};
+         setSV(3),
+         <<41/integer, Integer:16/integer-little-unsigned>>;
       Integer < 16777216 ->
-         {<<42/integer, Integer:24/integer-little-unsigned>>, 4};
+         setSV(4),
+         <<42/integer, Integer:24/integer-little-unsigned>>;
       Integer < 4294967296 ->
-         {<<43/integer, Integer:32/integer-little-unsigned>>, 5};
+         setSV(5),
+         <<43/integer, Integer:32/integer-little-unsigned>>;
       Integer < 1099511627776 ->
-         {<<44/integer, Integer:40/integer-little-unsigned>>, 6};
+         setSV(6),
+         <<44/integer, Integer:40/integer-little-unsigned>>;
       Integer < 281474976710656 ->
-         {<<45/integer, Integer:48/integer-little-unsigned>>, 7};
+         setSV(7),
+         <<45/integer, Integer:48/integer-little-unsigned>>;
       Integer < 72057594037927936 ->
-         {<<46/integer, Integer:56/integer-little-unsigned>>, 8};
+         setSV(8),
+         <<46/integer, Integer:56/integer-little-unsigned>>;
       Integer < 18446744073709551616 ->
-         {<<47/integer, Integer:64/integer-little-unsigned>>, 9};
+         setSV(9),
+         <<47/integer, Integer:64/integer-little-unsigned>>;
       true ->
          erlang:throw({error, too_big_integer})
    end.
 
 encodeFloat(Float) ->
-   {<<27/integer, Float:64/float-little>>, 9}.
+   setSV(9),
+   <<27/integer, Float:64/float-little>>.
 
 encodeString(BinStr) ->
    StrSize = erlang:byte_size(BinStr),
    if
       StrSize =< 126 ->
-         {<<(StrSize + 64)/integer, BinStr/binary>>, StrSize + 1};
+         setSV(StrSize + 1),
+         <<(StrSize + 64)/integer, BinStr/binary>>;
       StrSize < 18446744073709551616 ->
-         {<<191/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>, StrSize + 9};
+         setSV(StrSize + 9),
+         <<191/integer, StrSize:64/integer-little-unsigned, BinStr/binary>>;
       true ->
          erlang:throw({error, too_max_str})
    end.
@@ -181,21 +201,29 @@ encodeBlob(Blob) ->
    StrSize = erlang:byte_size(Blob),
    if
       StrSize < 256 ->
-         {<<192/integer, StrSize:8/integer-little-unsigned, Blob/binary>>, StrSize + 2};
+         setSV(StrSize + 2),
+         <<192/integer, StrSize:8/integer-little-unsigned, Blob/binary>>;
       StrSize < 65536 ->
-         {<<193/integer, StrSize:16/integer-little-unsigned, Blob/binary>>, StrSize + 3};
+         setSV(StrSize + 3),
+         <<193/integer, StrSize:16/integer-little-unsigned, Blob/binary>>;
       StrSize < 16777216 ->
-         {<<194/integer, StrSize:24/integer-little-unsigned, Blob/binary>>, StrSize + 4};
+         setSV(StrSize + 4),
+         <<194/integer, StrSize:24/integer-little-unsigned, Blob/binary>>;
       StrSize < 4294967296 ->
-         {<<195/integer, StrSize:32/integer-little-unsigned, Blob/binary>>, StrSize + 5};
+         setSV(StrSize + 5),
+         <<195/integer, StrSize:32/integer-little-unsigned, Blob/binary>>;
       StrSize < 1099511627776 ->
-         {<<196/integer, StrSize:40/integer-little-unsigned, Blob/binary>>, StrSize + 6};
+         setSV(StrSize + 6),
+         <<196/integer, StrSize:40/integer-little-unsigned, Blob/binary>>;
       StrSize < 281474976710656 ->
-         {<<197/integer, StrSize:48/integer-little-unsigned, Blob/binary>>, StrSize + 7};
+         setSV(StrSize + 7),
+         <<197/integer, StrSize:48/integer-little-unsigned, Blob/binary>>;
       StrSize < 72057594037927936 ->
-         {<<198/integer, StrSize:56/integer-little-unsigned, Blob/binary>>, StrSize + 8};
+         setSV(StrSize + 8),
+         <<198/integer, StrSize:56/integer-little-unsigned, Blob/binary>>;
       StrSize < 18446744073709551616 ->
-         {<<199/integer, StrSize:64/integer-little-unsigned, Blob/binary>>, StrSize + 9};
+         setSV(StrSize + 9),
+         <<199/integer, StrSize:64/integer-little-unsigned, Blob/binary>>;
       true ->
          erlang:throw({error, too_max_blob})
    end.
@@ -203,8 +231,10 @@ encodeBlob(Blob) ->
 doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, SumSize) ->
    case maps:next(Iterator) of
       {Key, Value, NextIter} ->
-         {KeyEn, KeySize} = encodeString(asKey(Key)),
-         {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
+         KeyEn = encodeString(asKey(Key)),
+         KeySize = getSV(),
+         ValueEn = encoder(Value, ArrOpt, ObjOpt),
+         ValueSize = getSV(),
          doEncodeMap(NextIter, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], SumSize + KeySize + ValueSize);
       none ->
          {AccList, SumSize}
@@ -213,8 +243,10 @@ doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, SumSize) ->
 doEncodeMap(Iterator, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
    case maps:next(Iterator) of
       {Key, Value, NextIter} ->
-         {KeyEn, KeySize} = encodeString(asKey(Key)),
-         {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
+         KeyEn = encodeString(asKey(Key)),
+         KeySize = getSV(),
+         ValueEn = encoder(Value, ArrOpt, ObjOpt),
+         ValueSize = getSV(),
          doEncodeMap(NextIter, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
       none ->
          {AccList, Offsets, SumSize}
@@ -224,9 +256,11 @@ doEncodeSortMap(Iterator, ArrOpt, ObjOpt, AccList, Offsets, SumSize) ->
    case maps:next(Iterator) of
       {Key, Value, NextIter} ->
          KeyStr = asKey(Key),
-         {KeyEn, KeySize} = encodeString(KeyStr),
-         {ValueEn, ValueSize} = encoder(Value, ArrOpt, ObjOpt),
-         doEncodeSortMap(NextIter, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [{KeyStr, SumSize} | Offsets], SumSize + KeySize + ValueSize);
+         KeyEn = encodeString(KeyStr),
+         KeySize = getSV(),
+         ValueEn = encoder(Value, ArrOpt, ObjOpt),
+         ValueSize = getSV(),
+         doEncodeSortMap(NextIter, ArrOpt, ObjOpt, [ValueEn, KeyEn | AccList], [SumSize | Offsets], SumSize + KeySize + ValueSize);
       none ->
          {AccList, Offsets, SumSize}
    end.
@@ -235,7 +269,8 @@ encodeMap(?VpObjNcYs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
-         {<<10/integer>>, 1};
+         setSV(1),
+         <<10/integer>>;
       _ ->
          {AccList, Offsets, SumSize} = doEncodeSortMap(maps:iterator(Map), ArrOpt, ?VpObjNcYs, [], [], 0),
          IoData = lists:reverse(AccList),
@@ -245,7 +280,8 @@ encodeMap(?VpObjYc, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
-         {<<10/integer>>, 1};
+         setSV(1),
+         <<10/integer>>;
       _ ->
          {AccList, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjYc, [], 0),
          IoData = lists:reverse(AccList),
@@ -255,7 +291,8 @@ encodeMap(?VpObjNcNs, Map, ArrOpt) ->
    MapSize = erlang:map_size(Map),
    case MapSize == 0 of
       true ->
-         {<<10/integer>>, 1};
+         setSV(1),
+         <<10/integer>>;
       _ ->
          {AccList, Offsets, SumSize} = doEncodeMap(maps:iterator(Map), ArrOpt, ?VpObjNcNs, [], [], 0),
          IoData = lists:reverse(AccList),
@@ -268,19 +305,23 @@ encodeSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize < 253 ->
          AllSize = TemSize + 3,
          Header = <<11/integer, AllSize:8/integer-unsigned, Count:8/integer-unsigned>>,
-         {[Header, IoData, buildSMIndexTable_1(Offsets, 3)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildSMIndexTable_1(Offsets, 3)];
       TemSize + Count < 65531 ->
          AllSize = TemSize + Count + 5,
          Header = <<12/integer, AllSize:16/integer-little-unsigned, Count:16/integer-little-unsigned>>,
-         {[Header, IoData, buildSMIndexTable_2(Offsets, 5)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildSMIndexTable_2(Offsets, 5)];
       TemSize + Count * 3 < 4294967287 ->
          AllSize = TemSize + Count * 3 + 9,
          Header = <<13/integer, AllSize:32/integer-little-unsigned, Count:32/integer-little-unsigned>>,
-         {[Header, IoData, buildSMIndexTable_4(Offsets, 9)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildSMIndexTable_4(Offsets, 9)];
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<14/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildSMIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildSMIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>];
       true ->
          erlang:throw({error, too_much_sort_map_size})
    end.
@@ -291,19 +332,23 @@ encodeUnSortMapIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize < 253 ->
          AllSize = TemSize + 3,
          Header = <<15/integer, AllSize:8/integer-unsigned, Count:8/integer-unsigned>>,
-         {[Header, IoData, buildIndexTable_1(Offsets, 3)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_1(Offsets, 3)];
       TemSize + Count < 65531 ->
          AllSize = TemSize + Count + 5,
          Header = <<16/integer, AllSize:16/integer-little-unsigned, Count:16/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_2(Offsets, 5)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_2(Offsets, 5)];
       TemSize + Count * 3 < 4294967287 ->
          AllSize = TemSize + Count * 3 + 9,
          Header = <<17/integer, AllSize:32/integer-little-unsigned, Count:32/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_4(Offsets, 9)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_4(Offsets, 9)];
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<18/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>];
       true ->
          erlang:throw({error, too_much_unsort_map_size})
    end.
@@ -318,13 +363,13 @@ buildIndexTable_8(Offsets, StartSize) ->
    <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- lists:reverse(Offsets)>>.
 
 buildSMIndexTable_1(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+   <<<<(OneOff + StartSize):1/integer-little-unsigned-unit:8>> || OneOff <- lists:sort(Offsets)>>.
 buildSMIndexTable_2(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+   <<<<(OneOff + StartSize):2/integer-little-unsigned-unit:8>> || OneOff <- lists:sort(Offsets)>>.
 buildSMIndexTable_4(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+   <<<<(OneOff + StartSize):4/integer-little-unsigned-unit:8>> || OneOff <- lists:sort(Offsets)>>.
 buildSMIndexTable_8(Offsets, StartSize) ->
-   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || {_, OneOff} <- lists:sort(Offsets)>>.
+   <<<<(OneOff + StartSize):8/integer-little-unsigned-unit:8>> || OneOff <- lists:sort(Offsets)>>.
 
 compactIntegerList(Integer, AccList) ->
    case Integer < 128 of
@@ -357,7 +402,8 @@ encodeCompactData(Type, IoData, SumSize, Count) ->
    CompactList = compactInteger(Count, true),
    AllSize = SumSize + 1 + erlang:length(CompactList),
    {TotalSize, FinalSize} = compactSize(AllSize),
-   {[Type, TotalSize, IoData | CompactList], FinalSize}.
+   setSV(FinalSize),
+   [Type, TotalSize, IoData | CompactList].
 
 
 asKey(Value) when erlang:is_atom(Value) -> erlang:atom_to_binary(Value, utf8);
@@ -367,13 +413,15 @@ asKey(_Value) -> erlang:throw({error, invalid_key}).
 doEncodeList([], _ArrOpt, _ObjOpt, AccList, SumSize, Count) ->
    {AccList, SumSize, Count};
 doEncodeList([One | Left], ArrOpt, ObjOpt, AccList, SumSize, Count) ->
-   {ValueEn, ValueSize} = encoder(One, ArrOpt, ObjOpt),
+   ValueEn = encoder(One, ArrOpt, ObjOpt),
+   ValueSize = getSV(),
    doEncodeList(Left, ArrOpt, ObjOpt, [ValueEn | AccList], SumSize + ValueSize, Count + 1).
 
 doEncodeList([], _ArrOpt, _ObjOpt, AccList, Offsets, SumSize, Count, SizeOrIsNot) ->
    {AccList, Offsets, SumSize, Count, SizeOrIsNot};
 doEncodeList([One | Left], ArrOpt, ObjOpt, AccList, Offsets, SumSize, Count, SizeOrIsNot) ->
-   {ValueEn, ValueSize} = encoder(One, ArrOpt, ObjOpt),
+   ValueEn = encoder(One, ArrOpt, ObjOpt),
+   ValueSize = getSV(),
    case SizeOrIsNot of
       true ->
          doEncodeList(Left, ArrOpt, ObjOpt, [ValueEn | AccList], [SumSize | Offsets], ValueSize + SumSize, Count + 1, SizeOrIsNot);
@@ -386,7 +434,8 @@ doEncodeList([One | Left], ArrOpt, ObjOpt, AccList, Offsets, SumSize, Count, Siz
 encodeList(?VpArrNc, List, ObjOpt) ->
    case List of
       [] ->
-         {<<1/integer>>, 1};
+         setSV(1),
+         <<1/integer>>;
       _ ->
          {AccList, Offsets, SumSize, Count, IsNotSameSize} = doEncodeList(List, ?VpArrNc, ObjOpt, [], [], 0, 0, init),
 
@@ -401,7 +450,8 @@ encodeList(?VpArrNc, List, ObjOpt) ->
 encodeList(?VpArrYc, List, ObjOpt) ->
    case List of
       [] ->
-         {<<1/integer>>, 1};
+         setSV(1),
+         <<1/integer>>;
       _ ->
          {AccList, SumSize, Count} = doEncodeList(List, ?VpArrYc, ObjOpt, [], 0, 0),
          IoData = lists:reverse(AccList),
@@ -413,19 +463,23 @@ encodeListWithoutIndexTable(IoData, SumSize) ->
       SumSize < 254 ->
          AllSize = SumSize + 2,
          Header = <<2/integer, AllSize:1/integer-little-unsigned-unit:8>>,
-         {[Header, IoData], AllSize};
+         setSV(AllSize),
+         [Header, IoData];
       SumSize < 65533 ->
          AllSize = SumSize + 3,
          Header = <<3/integer, AllSize:2/integer-little-unsigned-unit:8>>,
-         {[Header, IoData], AllSize};
+         setSV(AllSize),
+         [Header, IoData];
       SumSize < 4294967291 ->
          AllSize = SumSize + 5,
          Header = <<4/integer, AllSize:4/integer-little-unsigned-unit:8>>,
-         {[Header, IoData], AllSize};
+         setSV(AllSize),
+         [Header, IoData];
       SumSize < 18446744073709551607 ->
          AllSize = SumSize + 9,
          Header = <<5/integer, AllSize:8/integer-little-unsigned-unit:8>>,
-         {[Header, IoData], AllSize};
+         setSV(AllSize),
+         [Header, IoData];
       true ->
          erlang:throw({error, too_much_wo_list_size})
    end.
@@ -436,19 +490,23 @@ encodeListWithIndexTable(IoData, Count, Offsets, SumSize) ->
       TemSize < 253 ->
          AllSize = TemSize + 3,
          Header = <<6/integer, AllSize:8/integer-unsigned, Count:8/integer-unsigned>>,
-         {[Header, IoData, buildIndexTable_1(Offsets, 3)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_1(Offsets, 3)];
       TemSize + Count < 65531 ->
          AllSize = TemSize + Count + 5,
          Header = <<7/integer, AllSize:16/integer-little-unsigned, Count:16/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_2(Offsets, 5)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_2(Offsets, 5)];
       TemSize + Count * 3 < 4294967287 ->
          AllSize = TemSize + Count * 3 + 9,
          Header = <<8/integer, AllSize:32/integer-little-unsigned, Count:32/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_4(Offsets, 9)], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_4(Offsets, 9)];
       TemSize + Count * 7 < 18446744073709551599 ->
          AllSize = TemSize + Count * 7 + 17,
          Header = <<9/integer, AllSize:64/integer-little-unsigned>>,
-         {[Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>], AllSize};
+         setSV(AllSize),
+         [Header, IoData, buildIndexTable_8(Offsets, 9), <<Count:64/integer-little-unsigned>>];
       true ->
          erlang:throw({error, too_much_wi_list_size})
    end.
@@ -461,7 +519,7 @@ decodeAll(DataBin) ->
    case BodyBin of
       <<>> ->
          {HeaderTerm, #{}};
-      _  ->
+      _ ->
          {BodyTerm, _LeftBin} = decoder(BodyBin),
          {HeaderTerm, BodyTerm}
    end.
