@@ -1,6 +1,6 @@
 erlVPack
 =====
-erlAarango 二进制序列化库
+eAarango 二进制序列化库
 
 Build
 -----
