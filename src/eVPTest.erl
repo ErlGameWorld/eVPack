@@ -1,6 +1,6 @@
 -module(eVPTest).
 
--export([binToHex/1, test/1, test/3]).
+-export([binToHex/1, test/1, test/3, en/0, de/1]).
 
 -define(Hex(X), (getHex(X)):16).
 
@@ -50,15 +50,41 @@ getHex(X) ->
       }).
 
 test(Term) ->
-   VPBin = eVPack:encodeBin(Term),
+   VPBin = eVPack:encode(Term),
    VPBinHex = binToHex(VPBin),
    file:write_file("./vpackbin", VPBinHex),
    os:cmd("./vpackVal --hex vpackbin").
 
 test(Term, ArrOpt, ObjOpt) ->
-   VPBin = eVPack:encodeBin(Term, ArrOpt, ObjOpt),
+   VPBin = eVPack:encode(Term, ArrOpt, ObjOpt),
    VPBinHex = binToHex(VPBin),
    file:write_file("./vpackbin", VPBinHex),
    os:cmd("./vpackVal --hex vpackbin").
 
+en() ->
+   Maps = #{
+      <<"0">> => #{
+         <<"0">> => 111, <<"1">> => 2222,
+         <<"2">> => [11, 22, 33, 12, 134, 432, 432, 432,1432, 432], <<"3">> => [1, 1,1, 1, 1, 1,1, 1],
+         <<"4">> => <<"test">>},
+      <<"1">> => #{<<"0">> => <<"test">>, <<"1">> => <<"test">>,
+         <<"2">> => <<"test">>, <<"3">> => <<"test">>,
+         <<"4">> => <<"test">>},
+      <<"2">> => #{
+         <<"0">> => <<"test">>, <<"1">> => <<"test">>,
+         <<"2">> => <<"test">>, <<"3">> => <<"test">>,
+         <<"4">> => <<"test">>},
+      <<"3">> => #{
+         <<"0">> => <<"test">>, <<"1">> => abcd,
+         <<"2">> => <<"test">>, <<"3">> => bbb,
+         <<"4">> => <<"test">>},
+      <<"4">> => #{
+         <<"0">> => <<"test">>, <<"1">> => <<"test">>,
+         <<"2">> => <<"test">>, <<"3">> => <<"test">>,
+         <<"4">> => <<"test">>}
+   },
+   eVPack:encode(Maps).
+
+de(A) ->
+   eVPack:decode(A).
 
