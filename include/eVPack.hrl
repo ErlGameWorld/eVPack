@@ -15,6 +15,8 @@
 -define(VpArrDef, ?VpArrNc).                             %% 默认选项 Arr不压缩排序
 -define(VpObjDef, ?VpObjNcYs).                           %% 默认选项 排序Obj key  Obj不压缩
 
+-define(blob, blob).                                     %% 二进制tag 标记
+
 -define(VpBinaryCopyRatio, 1.2).
 
 -endif.

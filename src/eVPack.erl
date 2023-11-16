@@ -52,10 +52,11 @@ encode(Term, ArrOpt, ObjOpt) ->
 
 encoder(Map, ArrOpt, ObjOpt) when erlang:is_map(Map) -> encodeMap(ObjOpt, Map, ArrOpt);
 encoder(Atom, _, _) when erlang:is_atom(Atom) -> encodeAtom(Atom);
-encoder(Binary, _, _) when erlang:is_binary(Binary) -> encodeBinary(Binary);
+encoder(Binary, _, _) when erlang:is_binary(Binary) -> encodeString(Binary);
 encoder(Integer, _, _) when erlang:is_integer(Integer) -> encodeInteger(Integer);
 encoder(Float, _, _) when erlang:is_float(Float) -> encodeFloat(Float);
 encoder(List, ArrOpt, ObjOpt) when erlang:is_list(List) -> encodeList(ArrOpt, List, ObjOpt);
+encoder({?blob, Blob}, _, _) when erlang:is_binary(Blob) -> encodeBlob(Blob);
 encoder(_Value, _, _) -> erlang:throw({error, {invalid_type, dataType(_Value), _Value}}).
 
 dataType(Data) when is_list(Data) -> list;
@@ -189,7 +190,7 @@ encodeString(BinStr) ->
          erlang:throw({error, too_max_str})
    end.
 
-encodeBinary(Blob) ->
+encodeBlob(Blob) ->
    StrSize = erlang:byte_size(Blob),
    if
       StrSize =< 256 ->
@@ -1368,72 +1369,72 @@ decoder(192, RestBin) ->
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(193, RestBin) ->
    <<Length:16/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(194, RestBin) ->
    <<Length:24/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(195, RestBin) ->
    <<Length:32/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(196, RestBin) ->
    <<Length:40/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(197, RestBin) ->
    <<Length:48/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(198, RestBin) ->
    <<Length:56/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(199, RestBin) ->
    <<Length:64/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
    RefSize = binary:referenced_byte_size(RestBin),
    case RefSize / Length > ?VpBinaryCopyRatio of
       true ->
-         {binary:copy(BinStr), LeftBin};
+         {{?blob, binary:copy(BinStr)}, LeftBin};
       _ ->
-         {BinStr, LeftBin}
+         {{?blob, BinStr}, LeftBin}
    end;
 decoder(244, RestBin) ->
    <<Length:8/integer-little-unsigned, BinStr:Length/binary, LeftBin/bitstring>> = RestBin,
